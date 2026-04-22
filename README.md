@@ -33,6 +33,7 @@ Use the Skills CLI format `owner/repo@skill-name`:
 
 ```bash
 npx skills add uranus-agency/skills@bb -g -y
+npx skills add uranus-agency/skills@butcher -g -y
 ```
 
 ## Local Development Workflow
@@ -79,6 +80,7 @@ git push origin bb-v1.1.0
 ## Current Skills
 
 - `bb` — Yektanet Digital Billboard builder.
+- `butcher` — Ad creative dissection & asset extraction for BB production.
 - `template` — Base scaffold for creating new skills consistently.
 
 ## Author
