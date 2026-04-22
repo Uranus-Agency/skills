@@ -14,14 +14,14 @@ skills/
         SKILL.md
         references/
             ...
-    voocher/
+    template/
         SKILL.md
         references/
-            README.md
+            START_HERE.md
 
 commands/
     bb.md
-    voocher.md
+    template.md
 
 plugin.json
 README.md
@@ -33,7 +33,6 @@ Use the Skills CLI format `owner/repo@skill-name`:
 
 ```bash
 npx skills add uranus-agency/skills@bb -g -y
-npx skills add uranus-agency/skills@voocher -g -y
 ```
 
 ## Local Development Workflow
@@ -45,16 +44,23 @@ npx skills add uranus-agency/skills@voocher -g -y
 
 ## Add a New Skill
 
-1. Create `skills/<new-skill>/SKILL.md` with valid YAML frontmatter.
-2. Set `name` in frontmatter equal to the folder name.
-3. Add a clear `description` with trigger keywords.
-4. Optionally add `commands/<new-skill>.md`.
-5. Commit and tag release.
+1. Copy `skills/template` to `skills/<new-skill>`.
+2. Update `skills/<new-skill>/SKILL.md` frontmatter (`name`, `description`, `version`).
+3. Replace all placeholders (`<...>`) with real domain rules.
+4. Optional: copy `commands/template.md` to `commands/<new-skill>.md` and customize.
+5. Run a placeholder check and ensure no template tokens remain.
+6. Commit and tag release.
+
+## Template Files
+
+- Skill template: `skills/template/SKILL.md`
+- Template checklist: `skills/template/references/START_HERE.md`
+- Command template: `commands/template.md`
 
 ## Current Skills
 
 - `bb` — Yektanet Digital Billboard builder.
-- `voocher` — Voucher/promo flow assistant scaffold.
+- `template` — Base scaffold for creating new skills consistently.
 
 ## Author
 
