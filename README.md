@@ -42,6 +42,24 @@ npx skills add uranus-agency/skills@bb -g -y
 3. If needed, add a matching command file in `commands/<skill-name>.md`.
 4. Bump versions and release notes when behavior changes.
 
+## Release Strategy
+
+- Each skill has independent semantic versioning in `skills/<skill>/SKILL.md`.
+- Each skill has its own changelog in `skills/<skill>/CHANGELOG.md`.
+- Git tag format is per-skill: `<skill>-v<version>`.
+- Full policy and release checklist: `RELEASE_STRATEGY.md`.
+
+Example:
+
+```bash
+# bb release example
+git add skills/bb/SKILL.md skills/bb/CHANGELOG.md
+git commit -m "release(bb): v1.1.0"
+git tag -a bb-v1.1.0 -m "bb v1.1.0"
+git push origin main
+git push origin bb-v1.1.0
+```
+
 ## Add a New Skill
 
 1. Copy `skills/template` to `skills/<new-skill>`.
@@ -55,6 +73,7 @@ npx skills add uranus-agency/skills@bb -g -y
 
 - Skill template: `skills/template/SKILL.md`
 - Template checklist: `skills/template/references/START_HERE.md`
+- Changelog template: `skills/template/references/CHANGELOG_TEMPLATE.md`
 - Command template: `commands/template.md`
 
 ## Current Skills
