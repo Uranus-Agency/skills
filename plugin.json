@@ -1,0 +1,9 @@
+{
+  "name": "bb",
+  "version": "1.0.0",
+  "description": "BB — Yektanet Digital Billboard Developer for Uranus Agency. Generates production-ready 150px sticky-bottom ad packages (4 files: index.html, style.css, script.js, tags.js) with GSAP animations, RTL Persian layout, and full Yektanet event tracking.",
+  "author": {
+    "name": "Uranus Agency",
+    "email": "dev@uranus-agency.ir"
+  }
+}

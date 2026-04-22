@@ -1,0 +1,20 @@
+- [BB Asset Analysis](feedback_bb_asset_analysis.md) — BB must visually inspect every asset before coding; extract colors, understand content
+- [BB Patterns Catalog](project_bb_patterns_catalog.md) — 15 advanced techniques from 70+ production billboards across 50+ brands
+- [BB Layout Structure](feedback_bb_layout_structure.md) — 70/30 split layout, slide-up video panel, drop-in product, logo badge, pill CTA with tapesh pulse
+- [BB Mobile Only](feedback_bb_mobile_only.md) — All billboards are mobile-only: 390-410px width, 150px height, never desktop
+- [BB Sizing & Effects](feedback_bb_sizing_and_effects.md) — Design in 120px, overflow zone for poke-out, floating bg, card sizing, multi-phase animations
+- [BB GSAP Timeline Rules](feedback_bb_gsap_timeline.md) — Never repeat:-1 in timeline, immediateRender:false on fromTo, single master timeline pattern
+- [BB Positioning & Transforms](feedback_bb_positioning.md) — Animate with x/y transforms only, mirror layout = negative x, body bg always transparent
+- [BB Smooth Transitions](feedback_bb_smooth_transitions.md) — Animate scaleX flips, overlap bg recovery with movement, no empty frames between phases
+- [BB Background & Layout](feedback_bb_bg_layout.md) — BG 5px from bottom, 120px height, poke-out to 150px, HTML animated backgrounds
+- [BB Click & Landing](feedback_bb_click_landing.md) — NO stopPropagation on clickable elements, landing needs event bubbling
+- [BB Creation: Azki](project_bb_creation_azki.md) — Multi-phase flip/mirror, HTML animated bg, 6-phase timeline
+- [BB Phase 2 Phone Frame](feedback_bb_phase2_phone.md) — Two-phase pattern: content → live app iframe in phone frame, CTA+logo centered, separate tweens, xPercent centering fix
+- [BB Mask Transparency](feedback_bb_mask_transparency.md) — CSS mask-image via GSAP onUpdate to fade left bg zone; text readability overlay in bg.html
+- [BB Creation: Yekjoo](project_bb_creation_yekjoo.md) — 5-campaign suite: PSD extraction, animated bg.html per campaign, two-phase timeline, coordinate mapping formula
+- [BB Creation: Bitpin 40X](project_bb_creation_bitpin_40x.md) — Two-phase impact+CTA, crypto surge matrix bg, copy-compress trick, coin burst + 40X slam
+- [BB Creation: INVI Gift](project_bb_creation_invi_gift.md) — 3-scene: gift+INVI5 / live price+calc / combined; inline canvas bg; bgPhase vignette system
+- [BB GSAP Scene Switching](feedback_bb_gsap_scene_switching.md) — Use .call(gsap.set) NOT timeline.set() for scene opacity; timeline.set at pos 0 can silently fail
+- [BB Creation: Melligold](project_bb_creation_melligold.md) — Interactive slide 0 (gold prediction), live WebSocket price, canvas bg on priceBox+badge, 6-style bg kills, shatter CTA, single-loop reload
+- [BB Creation: MatigGold](project_bb_creation_matigold.md) — CSS orbital rings (tilted ellipses), coin orbit via parametric math + GSAP ticker, depth via z-index + scale from sin(angle)
+- [BB Creation: Azki Race](project_bb_creation_azki_race.md) — PIL position map, offsetLeft vs getBoundingClientRect, fitBB responsive scale, single-file delivery, mask flip, text-bg mirror, phase kill in tl.call
