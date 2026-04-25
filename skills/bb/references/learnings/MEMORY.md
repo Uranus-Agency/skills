@@ -1,3 +1,6 @@
+- [BB — 50% Average Coverage Rule](feedback_bb_50_percent_coverage.md) — **#1 TIME CONSTRAINT**: time-weighted average iframe coverage across the 30s loop must sit near 50%. Peaks 70-80%, valleys 18-40%. Never stay heavy for long.
+- [BB — 70/30 Rule (Distribution)](feedback_bb_70_30_rule.md) — **#1 DISTRIBUTION CONSTRAINT**: ≤70% content in one rectangle, ≥30% transparent at every instant; hero elements (big numbers, charts, orbits) float OUTSIDE the panel as `position: fixed` siblings — not crammed inside it.
+- [BB — Multi-Slide Narrative](feedback_bb_multi_slide_narrative.md) — **#1 STRUCTURE CONSTRAINT**: every 30s BB is a 4-6 scene short film (intro → value beats → payoff → urgency), NOT a single cycling layout. Each scene has one job.
 - [BB Asset Analysis](feedback_bb_asset_analysis.md) — BB must visually inspect every asset before coding; extract colors, understand content
 - [BB Patterns Catalog](project_bb_patterns_catalog.md) — 15 advanced techniques from 70+ production billboards across 50+ brands
 - [BB Layout Structure](feedback_bb_layout_structure.md) — 70/30 split layout, slide-up video panel, drop-in product, logo badge, pill CTA with tapesh pulse
@@ -18,3 +21,10 @@
 - [BB Creation: Melligold](project_bb_creation_melligold.md) — Interactive slide 0 (gold prediction), live WebSocket price, canvas bg on priceBox+badge, 6-style bg kills, shatter CTA, single-loop reload
 - [BB Creation: MatigGold](project_bb_creation_matigold.md) — CSS orbital rings (tilted ellipses), coin orbit via parametric math + GSAP ticker, depth via z-index + scale from sin(angle)
 - [BB Creation: Azki Race](project_bb_creation_azki_race.md) — PIL position map, offsetLeft vs getBoundingClientRect, fitBB responsive scale, single-file delivery, mask flip, text-bg mirror, phase kill in tl.call
+- [BB No Empty Collapsed Scenes](feedback_bb_no_empty_collapsed_scenes.md) — every shape geometry in a morph sequence needs content; collapsed pill finale must carry urgency text + draining bar, not sit empty
+- [BB Morphing Breathing Shape](feedback_bb_morphing_breathing_shape.md) — one shape morphing through 5 geometries (pill → liveBig → liveMid → giftBig → collapse) packs multi-scene narrative while keeping iframe transparent; coverage oscillates 18-78%
+- [BB Live Data API Cascade](feedback_bb_live_data_cascade.md) — cascade primary→fallback API for live-price BBs; realistic fallback values are mandatory (user catches wrong numbers instantly); preview sandbox can't reach external APIs, trust production
+- [BB Creation: Nobitex](project_bb_creation_nobitex.md) — signup BB, 6-scene morphing card, 3 floating 3D-sphere coins, live-price API cascade, urgency-pill finale with draining bar
+- [BB GSAP vs CSS Centering Conflict](feedback_bb_gsap_transform_vs_css_centering.md) — never use `top:50%; translateY(-50%)` for elements GSAP will scale/rotate — GSAP overwrites the matrix; use absolute numeric top = (150-h)/2
+- [BB RTL Chart Direction](feedback_bb_rtl_chart_direction.md) — RTL flips flex-row order (ascending bars render descending); fix with `direction: ltr` on the specific chart/progress container
+- [BB Creation: Tabdeal 100x](project_bb_creation_tabdeal.md) — crypto signup BB; birthplace of 70/30 rule; 5-scene narrative with tiny anchor panel + 6 floating hero elements (orbit, ticker, ۱۸+, coin grid, ۱۰۰×, chart)
