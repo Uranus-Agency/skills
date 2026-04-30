@@ -1,5 +1,21 @@
 # adferz CHANGELOG
 
+## 1.1.0 — 2026-04-30
+
+### Added
+- **STEP 1.5 — Layout Blueprint**: Mandatory pre-code wireframe phase. Produces a scene plan table (timing, coverage %, message, elements per scene), element space budget (bbox × position zone × TAR solution), and treatment selection with anti-bias check. Blueprint must be confirmed before any code begins.
+- **STEP 1.7 — Pre-Flight Checklist**: 6 binary checks run after blueprint confirmation. Catches overlap, TAR gaps, pattern-bias repeat, missing coverage valley, and 70/30 violations before code is written.
+- **Definition of Done**: 5-item explicit checklist — blueprint confirmed, pre-flight passed, score ≥80, 3-publisher TAR check, loop on `tl.onComplete`.
+- **STEP 4 — Learning Log**: Post-delivery prompt to save `[date]-[brand].md` in `references/learnings/`. Makes anti-pattern-bias auditable rather than advisory.
+- **Improved description** in frontmatter: more specific trigger phrases and explicit "first-prompt-to-final-output" promise.
+
+### Changed
+- Pipeline now stated explicitly: Format → Assets → Blueprint → Pre-Flight → Code → Score → Log.
+- Coverage schedule sketch moved from Rule 1 body into Blueprint template (single source of truth).
+- Skill trimmed and reorganized for faster scanning; redundant CSS snippets consolidated.
+
+---
+
 ## 1.0.0 — 2026-04-30
 
 Initial release. Unified skill replacing split `bb`, `bb-300x100`, `bb-300x250`, `bb-468`.
