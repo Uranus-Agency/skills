@@ -51,65 +51,133 @@ Before any planning, **visually inspect every asset** the user provides. Use the
 
 ## STEP 1.5 — Layout Blueprint *(mandatory before any code)*
 
-**This is the wireframe phase.** Before writing a single line of code, produce the blueprint below and either wait for user confirmation or auto-proceed if the brief says "build whatever you think fits".
+**This is the wireframe phase.** Claude cannot visually render HTML — it can only simulate the result through explicit spatial reasoning. This step forces that simulation before any code is written. A missed overlap here costs 5 seconds to fix; after coding it costs 30 minutes.
 
-The blueprint prevents overlap, timing errors, and TAR failures before they exist. A 5-minute blueprint saves 30 minutes of revision.
+Produce the full blueprint below, then wait for confirmation (or auto-proceed if the brief says "build whatever").
 
-### Blueprint template
+---
+
+### 1. Scene Plan
+
+| # | Name | Start | End | BG Coverage | Message (1 line) | Elements present |
+|---|------|-------|-----|-------------|-----------------|-----------------|
+| 1 | Brand intro | 0s | 4s | ~30% | معرفی برند | logo-pill, tagline |
+| 2 | KV moment | 4s | 9s | ~5% | تصویر محصول | KV-hero |
+| 3 | Value beat | 9s | 14s | ~55% | پیشنهاد اصلی | panel, percent, headline |
+| 4 | Finale | 14s | 20s | ~25% | دعوت به اقدام | CTA, logo |
+Coverage avg: ~29%  curve: 30→5→55→25 = sinusoidal ✓
+
+---
+
+### 2. Element Space Budget
+
+Every element that appears in any scene must have a row here. This is the source of truth for all position values in CSS.
+
+| Element | Approx bbox | CSS anchor (fixed) | z-index | Type | TAR solution |
+|---------|------------|-------------------|---------|------|-------------|
+| BG panel | 250×115px | right:5 top:30 | 1 | bg | — |
+| KV hero | 90×120px | left:0 top:20 | 20 | visual | — |
+| headline | 180×38px | right:18 top:52 | 26 | **text** | panel backdrop |
+| percent badge | 60×60px | left:10 top:55 | 24 | visual | — |
+| logo | 48×28px | right:8 top:5 | 25 | **text** | self-backed pill |
+| CTA pill | 120×28px | right:14 bottom:10 | 32 | **text** | self-backed |
+
+Rule: text element z-index must always be **higher** than any visual element it shares pixel space with.
+
+---
+
+### 3. Visibility Matrix
+
+Shows which elements are simultaneously visible per scene. Any cell with two `■` in the same column = potential collision, check in Step 4.
+
+| Element | S1 0-4s | S2 4-9s | S3 9-14s | S4 14-20s |
+|---------|---------|---------|----------|-----------|
+| BG panel | ■ | □ | ■ | ■ |
+| KV hero | □ | ■ | ↓(shrunk) | □ |
+| headline | □ | □ | ■ | □ |
+| percent badge | □ | ■ | ↓(shrunk) | □ |
+| logo | ■ | ■ | ■ | ■ |
+| CTA | □ | □ | □ | ■ |
+
+(■ visible · □ hidden · ↓ visible but scaled/moved)
+
+Scenes with multiple `■` → run Collision Check (Step 4) for those scenes.
+
+---
+
+### 4. Collision Check
+
+For each scene where multiple elements are simultaneously visible, verify no **text** element is buried beneath a **visual** element in the same pixel zone.
+
+**How to check:** For elements A and B — do their x-ranges overlap AND their y-ranges overlap? If yes → check z-index direction. Text z must be HIGHER than visual z.
+
+| Scene | Text element | BBox (x1,y1)→(x2,y2) | z | Visual element | BBox | z | X-overlap? | Y-overlap? | Safe? |
+|-------|-------------|----------------------|---|---------------|------|---|-----------|-----------|-------|
+| S3 | headline | (220,52)→(400,90) | 26 | KV shrunk | (0,30)→(90,110) | 20 | NO | — | ✓ no collision |
+| S3 | headline | (220,52)→(400,90) | 26 | percent(sm) | (10,50)→(70,100) | 24 | NO | — | ✓ no collision |
+| S3 | logo | (352,5)→(400,33) | 25 | KV shrunk | (0,30)→(90,110) | 20 | NO | — | ✓ |
+
+All clear ✓ → proceed
+
+**Example of a VIOLATION (what to catch):**
+
+| Scene | Text element | BBox | z | Visual | BBox | z | Overlap? | Safe? |
+|-------|-------------|------|---|--------|------|---|---------|-------|
+| S3 | headline | (50,54)→(268,90) | 22 | percent3d | (70,50)→(210,210) | 24 | YES | ❌ text z:22 < visual z:24 — TEXT BURIED |
+
+→ Fix: raise headline z-index to 26 (above percent3d z:24).
+
+This is exactly the MatigGold class of bug — caught in 30 seconds of math, not 30 minutes of debugging.
+
+---
+
+### 5. Zone Map *(optional — draw for any scene where Collision Check shows overlap)*
+
+ASCII canvas: 1 char ≈ 10px. Draw element zones to confirm no hidden clash. Use `█` for bg panel, `[el]` for element bbox, `·` for transparent.
 
 ```
-## Layout Blueprint — [BrandName] [format]
+Scene 3 (9-14s)  bb-150 · 40 chars = 400px, 12 rows = 120px
+y=30  ████████████████████████████·············
+y=40  ████[logo─────────z25]██████·············
+y=50  ████[headline──z26────────]█·············
+y=60  ████[headline──z26────────]█[KV·z20·····]
+y=70  ████████████████████████████[KV·z20·····]
+y=90  ████████████████[CTA─z32]███·············
+y=110 ████████████████████████████·············
+```
+No visual clash confirmed ✓
 
-### Scene Plan
-| # | Name       | Start | End  | BG Coverage | Message (1 line) | Key elements present |
-|---|-----------|-------|------|-------------|-----------------|---------------------|
-| 1 | Brand intro| 0s    | 4s   | ~30%        | معرفی برند       | logo-pill, tagline  |
-| 2 | KV moment  | 4s    | 9s   | ~5%         | تصویر محصول      | KV-hero, no panel   |
-| 3 | Value beat | 9s    | 14s  | ~55%        | پیشنهاد اصلی     | panel, percent-badge|
-| 4 | Finale     | 14s   | 20s  | ~25%        | دعوت به اقدام    | CTA, logo           |
-Coverage avg: ~29%  curve shape: 30→5→55→25 = sinusoidal ✓
+---
 
-### Element Space Budget
-| Element  | Approx bbox | Position zone          | z-index | TAR solution        |
-|----------|------------|------------------------|---------|---------------------|
-| logo     | 48×28px    | top-right, 8px margin  | 25      | self-backed pill    |
-| headline | 180×38px   | center-right           | 22      | panel backdrop      |
-| percent  | 60×60px    | left poke-out          | 24      | self-backed chip    |
-| CTA pill | 120×28px   | bottom-right           | 32      | self-backed         |
-| KV hero  | 90×110px   | left poke-out, z:20    | 20      | —                   |
-| BG panel | 250×120px  | right 65%, bottom 5px  | 1       | —                   |
-No overlaps in any scene ✓
+### 6. Treatment
 
-### Treatment
+```
 Selected: [treatment name]
 Why: [1-line brand-fit reason]
-Last 2 builds used: [list from learnings, or "none logged"]
-Conflict: none ✓ / CONFLICT — switching to [X] ✗
-
-→ Confirm this plan, or say what to change.
+Last 2 builds used: [check references/learnings/ — list or "none logged"]
+Conflict: none ✓
 ```
 
-**Blueprint rules:**
-- Every element that appears in any scene must have a row in Element Space Budget.
-- Check bbox collision: if two elements share a position zone in the same scene, one must move.
-- Coverage avg must be ≤60% and curve must be sinusoidal (not flat).
-- Treatment must differ from the last build (check `references/learnings/`).
+→ **Confirm this blueprint, or say what to change.**
 
 ---
 
 ## STEP 1.7 — Pre-Flight Checklist
 
-After blueprint confirmation, run this checklist silently. If any item fails, fix the blueprint first — do not start coding.
+Run after blueprint confirmation, before writing any code. All 7 must pass.
 
-- [ ] **Scenes distinct**: each scene has a unique visual identity (not ≥90% similar to adjacent scene)
-- [ ] **No overlap**: no two elements share the same position zone in the same scene at the same time
-- [ ] **TAR assigned**: every text-bearing element has a TAR solution (backdrop / self-backed / halo / hidden) for every scene it appears in
-- [ ] **Treatment fresh**: selected treatment was NOT used in the most recent build in `references/learnings/`
-- [ ] **Valley exists**: at least one scene has bg coverage ≤15% (ensures sinusoidal shape, not a plateau)
-- [ ] **70/30 satisfied**: hero element floats outside the panel as a fixed sibling; panel ≤70% of iframe width
+- [ ] **Scenes distinct** — each scene has a unique visual identity (not ≥90% similar to adjacent)
+- [ ] **Visibility Matrix complete** — every element's per-scene visibility documented
+- [ ] **Collision Check passed** — Zero Overlap Score: 0 text elements with z-index below a visual element in the same pixel zone
+- [ ] **TAR assigned** — every text-bearing element has a TAR solution for every scene it appears in
+- [ ] **Treatment fresh** — not used in the most recent build in `references/learnings/`
+- [ ] **Valley exists** — at least one scene has bg coverage ≤15% (confirms sinusoidal, not plateau)
+- [ ] **70/30 satisfied** — hero floats outside panel; panel ≤70% of iframe width
 
-If all 6 pass → proceed to code.
+If all 7 pass → start coding.
 If any fail → fix blueprint, re-check, then code.
+
+**Key metric: Zero Overlap Score** — at delivery, no text element may have a lower z-index than a visual element occupying the same pixel zone in the same scene. This is binary: pass or fail. No partial credit.
 
 ---
 
