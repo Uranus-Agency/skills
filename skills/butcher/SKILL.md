@@ -94,13 +94,15 @@ For text/CTA: note exact text content, font, color, size.
 | Asset type | Method | Why |
 |---|---|---|
 | Background plate | `direct_crop` | Just crop, no BG removal needed |
-| Key visual (person/product with complex edges) | `transparentor` | Gemini image-to-image → exact subject, clean edges |
-| CTA button (styled, rounded, shadowed) | `transparentor` | Gemini preserves exact shape, color, style |
-| Text / logo / headline on **flat uniform bg** | `removebg` + `bg_color` | Exact original pixels — Gemini drops/changes characters |
+| Key visual (person/product/illustration) | `transparentor` | Gemini image-to-image → exact subject, clean edges |
+| CTA button on **flat uniform bg** | `removebg` + `bg_color` | Exact pixels — Gemini sometimes returns text only for small crops |
+| CTA button on **complex/gradient bg** | `transparentor` | Gemini needed when bg is not uniform |
+| Text / headline / subtitle on any bg | `removebg` + `bg_color` | Exact original pixels — Gemini drops/changes characters |
+| Logo on flat uniform bg | `removebg` + `bg_color` | Exact pixels — Gemini hallucinates geometry |
 
-**Critical rule — never use Gemini (`transparentor`) for text or logos on flat backgrounds.**
+**Critical rule — never use Gemini (`transparentor`) for text or logos.**
 Gemini regenerates content and will hallucinate, drop characters, or change letterforms.
-`removebg` with `bg_color` set to the background hex gives pixel-perfect results for flat-bg elements.
+`removebg` with `bg_color` = exact background hex gives pixel-perfect results for all flat-bg elements.
 
 **`transparentor` required fields:**
 ```json
