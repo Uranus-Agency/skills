@@ -94,9 +94,36 @@ For text/CTA: note exact text content, font, color, size.
 | Asset type | Method | Why |
 |---|---|---|
 | Background plate | `direct_crop` | Just crop, no BG removal needed |
-| Key visual / product / logo | `removebg` | LAB segmentation on cropped region |
-| Text / headline / subtitle | `text_render` | Render from specs, pixel-perfect |
-| CTA button | `text_render` | Render from specs, transparent PNG |
+| Key visual (person/product with complex edges) | `transparentor` | Gemini image-to-image → exact subject, clean edges |
+| CTA button (styled, rounded, shadowed) | `transparentor` | Gemini preserves exact shape, color, style |
+| Text / logo / headline on **flat uniform bg** | `removebg` + `bg_color` | Exact original pixels — Gemini drops/changes characters |
+
+**Critical rule — never use Gemini (`transparentor`) for text or logos on flat backgrounds.**
+Gemini regenerates content and will hallucinate, drop characters, or change letterforms.
+`removebg` with `bg_color` set to the background hex gives pixel-perfect results for flat-bg elements.
+
+**`transparentor` required fields:**
+```json
+{
+  "method": "transparentor",
+  "prompt": "describe what to isolate",
+  "contrast_bg": "#FF00FF",
+  "model": "google/gemini-2.5-flash-image",
+  "api_key": "sk-or-...",
+  "bbox": {"x_pct": ..., "y_pct": ..., "w_pct": ..., "h_pct": ...}
+}
+```
+
+**`removebg` with known bg color (for flat-bg text/logo):**
+```json
+{
+  "method": "removebg",
+  "bbox": {"x_pct": ..., "y_pct": ..., "w_pct": ..., "h_pct": ...},
+  "bg_color": "#A9B2B6",
+  "tolerance": 25,
+  "softness": 1.0
+}
+```
 
 ### Step 3: Write manifest.json
 
@@ -105,6 +132,7 @@ Write to the same directory as the source image. Example for a typical banner:
 ```json
 {
   "source": "/path/to/banner.png",
+  "name": "campaign_name",
   "assets": [
     {
       "name": "background_plate",
@@ -113,44 +141,41 @@ Write to the same directory as the source image. Example for a typical banner:
     },
     {
       "name": "key_visual",
-      "method": "removebg",
-      "bbox": {"x_pct": 0, "y_pct": 0, "w_pct": 44, "h_pct": 100},
-      "tolerance": 30,
-      "softness": 1.2
+      "method": "transparentor",
+      "prompt": "describe the subject to isolate",
+      "contrast_bg": "#FF00FF",
+      "tolerance": 38,
+      "softness": 1.2,
+      "model": "google/gemini-2.5-flash-image",
+      "api_key": "OPENROUTER_API_KEY_HERE",
+      "bbox": {"x_pct": 0, "y_pct": 0, "w_pct": 44, "h_pct": 100}
+    },
+    {
+      "name": "cta_button",
+      "method": "transparentor",
+      "prompt": "A styled CTA button. Isolate only the button on solid contrast bg.",
+      "contrast_bg": "#00FF00",
+      "tolerance": 35,
+      "softness": 1.0,
+      "model": "google/gemini-2.5-flash-image",
+      "api_key": "OPENROUTER_API_KEY_HERE",
+      "bbox": {"x_pct": 60, "y_pct": 70, "w_pct": 20, "h_pct": 20}
     },
     {
       "name": "logo",
       "method": "removebg",
       "bbox": {"x_pct": 55, "y_pct": 70, "w_pct": 20, "h_pct": 20},
+      "bg_color": "#BACKGROUND_HEX",
       "tolerance": 25,
       "softness": 0.8
     },
     {
-      "name": "copy_headline",
-      "method": "text_render",
-      "type": "text",
-      "text": "۱۰۰ گرم طلا ببر",
-      "font_family": "Vazirmatn",
-      "font_weight": "ExtraBold",
-      "font_size": 52,
-      "color": "#FFFFFF",
-      "direction": "rtl",
-      "width": 280,
-      "height": 130
-    },
-    {
-      "name": "cta_button",
-      "method": "text_render",
-      "type": "cta",
-      "text": "شروع کن",
-      "bg_color": "#F5C518",
-      "text_color": "#1A1F6E",
-      "font_family": "Vazirmatn",
-      "font_weight": "Bold",
-      "font_size": 18,
-      "width": 120,
-      "height": 44,
-      "border_radius": 8
+      "name": "headline",
+      "method": "removebg",
+      "bbox": {"x_pct": 60, "y_pct": 10, "w_pct": 30, "h_pct": 20},
+      "bg_color": "#BACKGROUND_HEX",
+      "tolerance": 25,
+      "softness": 1.0
     }
   ]
 }
