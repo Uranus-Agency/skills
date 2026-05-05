@@ -270,51 +270,93 @@ def handle_text_render(asset: dict, out_path: Path):
         os.unlink(tmp_manifest)
 
 
-def generate_image(prompt: str, api_key: str = '', model: str = '') -> bytes:
-    """
-    Generate image from prompt. Returns raw image bytes (JPEG or PNG).
-
-    Priority:
-    1. If api_key set → try OpenRouter chat completions (for models that output images)
-    2. Fallback → Pollinations.ai (free, no key needed, FLUX model)
-    """
-    import urllib.request
-    import urllib.parse
-
-    if api_key:
-        try:
-            return _generate_via_openrouter_chat(prompt, api_key, model or 'openai/gpt-4o-image')
-        except Exception as e:
-            print(f"    [openrouter] {e} — falling back to pollinations")
-
-    # Pollinations.ai — free, URL-based, no key needed
-    return _generate_via_pollinations(prompt)
-
-
-def _generate_via_pollinations(prompt: str, width: int = 1024, height: int = 1024) -> bytes:
-    """Pollinations.ai free image generation (FLUX model)."""
-    import urllib.request
-    import urllib.parse
-
-    encoded = urllib.parse.quote(prompt)
-    url = (f'https://image.pollinations.ai/prompt/{encoded}'
-           f'?model=flux&width={width}&height={height}&nologo=true')
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-    with urllib.request.urlopen(req, timeout=120) as resp:
-        return resp.read()
-
-
-def _generate_via_openrouter_chat(prompt: str, api_key: str, model: str) -> bytes:
-    """
-    Try OpenRouter chat completions for models that return images in content.
-    Works with models like openai/gpt-image-1 if/when OpenRouter supports them.
-    """
-    import urllib.request
+def _image_to_b64(img: Image.Image, fmt: str = 'PNG') -> str:
+    """Encode PIL image to base64 string."""
     import base64
+    import io as _io
+    buf = _io.BytesIO()
+    img.save(buf, format=fmt)
+    return base64.b64encode(buf.getvalue()).decode('ascii')
+
+
+def _extract_image_from_response(data: dict) -> bytes | None:
+    """
+    Pull image bytes out of an OpenRouter chat response.
+    Handles multiple response formats:
+    - message['images'] list (gemini-*-image models via OpenRouter)
+    - message['content'] list with image_url parts
+    - inline base64 data URIs in text content
+    Returns None if no image found.
+    """
+    import base64
+    import urllib.request
+
+    msg = data['choices'][0]['message']
+
+    # Format 1: message['images'] — used by gemini-2.5-flash-image via OpenRouter
+    images = msg.get('images') or []
+    for item in images:
+        if isinstance(item, dict) and item.get('type') == 'image_url':
+            url = item['image_url']['url']
+            if url.startswith('data:'):
+                return base64.b64decode(url.split(',', 1)[1])
+            with urllib.request.urlopen(url, timeout=60) as r:
+                return r.read()
+
+    # Format 2: message['content'] list with image_url parts
+    content = msg.get('content')
+    parts = content if isinstance(content, list) else ([{'type': 'text', 'text': str(content)}] if content else [])
+    for part in parts:
+        if not isinstance(part, dict):
+            continue
+        if part.get('type') == 'image_url':
+            url = part['image_url']['url']
+            if url.startswith('data:'):
+                return base64.b64decode(url.split(',', 1)[1])
+            with urllib.request.urlopen(url, timeout=60) as r:
+                return r.read()
+        if part.get('type') == 'text':
+            text = part.get('text', '')
+            if 'data:image' in text:
+                b64 = text.split('data:image')[1].split(',', 1)[1].split('"')[0].strip()
+                return base64.b64decode(b64)
+
+    return None
+
+
+def gemini_edit_image(source_img: Image.Image, prompt: str,
+                       api_key: str, contrast_bg: str = '#FF00FF',
+                       model: str = 'google/gemini-2.0-flash-exp:free') -> bytes | None:
+    """
+    Send source image to Gemini via OpenRouter multimodal chat.
+    Ask it to isolate the subject on a solid contrast background.
+    Returns image bytes if the model outputs an image, else None.
+    """
+    import urllib.request
+    import urllib.error
+
+    b64 = _image_to_b64(source_img, 'PNG')
+    mime = 'image/png'
+
+    edit_instruction = (
+        f"{prompt}\n\n"
+        f"TASK: Generate a new image containing ONLY the subject described above, "
+        f"placed on a perfectly solid flat {contrast_bg} background. "
+        f"Remove all text, logos, decorative elements, UI elements, and anything that is not the main subject. "
+        f"Do not add shadows or ground reflections. "
+        f"Output a clean product-style image ready for background removal. "
+        f"The background color must be exactly {contrast_bg}."
+    )
 
     payload = json.dumps({
         'model': model,
-        'messages': [{'role': 'user', 'content': prompt}],
+        'messages': [{
+            'role': 'user',
+            'content': [
+                {'type': 'image_url', 'image_url': {'url': f'data:{mime};base64,{b64}'}},
+                {'type': 'text', 'text': edit_instruction},
+            ],
+        }],
     }).encode('utf-8')
 
     req = urllib.request.Request(
@@ -328,35 +370,64 @@ def _generate_via_openrouter_chat(prompt: str, api_key: str, model: str) -> byte
         },
         method='POST',
     )
-    with urllib.request.urlopen(req, timeout=180) as resp:
-        data = json.loads(resp.read().decode('utf-8'))
-
-    content = data['choices'][0]['message']['content']
-    if isinstance(content, list):
-        for part in content:
-            if isinstance(part, dict) and part.get('type') == 'image_url':
-                url = part['image_url']['url']
-                if url.startswith('data:'):
-                    return base64.b64decode(url.split(',', 1)[1])
-                with urllib.request.urlopen(url, timeout=60) as r:
-                    return r.read()
-    elif isinstance(content, str) and 'data:image' in content:
-        return base64.b64decode(content.split(',', 1)[1].strip())
-
-    raise ValueError(f"No image in chat response for model {model}")
+    try:
+        with urllib.request.urlopen(req, timeout=180) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
+        return _extract_image_from_response(data)
+    except urllib.error.HTTPError as e:
+        body = e.read()[:300].decode('utf-8', errors='replace')
+        raise RuntimeError(f"HTTP {e.code}: {body}")
 
 
-def handle_transparentor(asset: dict, out_path: Path):
+def _generate_via_pollinations(prompt: str, width: int = 1024, height: int = 1024) -> bytes:
+    """Pollinations.ai free image generation (FLUX model). Fallback only."""
+    import urllib.request
+    import urllib.parse
+
+    encoded = urllib.parse.quote(prompt)
+    url = (f'https://image.pollinations.ai/prompt/{encoded}'
+           f'?model=flux&width={width}&height={height}&nologo=true')
+    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    with urllib.request.urlopen(req, timeout=120) as resp:
+        return resp.read()
+
+
+def _removebg_from_bytes(img_bytes: bytes, contrast_bg: str,
+                          tolerance: int, softness: float) -> Image.Image:
+    """Decode image bytes → auto-detect bg from corners → remove bg → trim → RGBA."""
+    import io as _io
+    img = Image.open(_io.BytesIO(img_bytes)).convert('RGB')
+    arr = np.array(img)
+    h, w = arr.shape[:2]
+    cs = max(5, min(20, h // 20, w // 20))
+    corners = np.concatenate([
+        arr[:cs, :cs].reshape(-1, 3),
+        arr[:cs, -cs:].reshape(-1, 3),
+        arr[-cs:, :cs].reshape(-1, 3),
+        arr[-cs:, -cs:].reshape(-1, 3),
+    ])
+    actual_bg = corners.mean(axis=0).astype(np.uint8)
+    print(f"    detected bg: rgb{tuple(actual_bg)}  (specified: {contrast_bg})")
+    result = removebg_known_color(arr, actual_bg, tolerance=tolerance, softness=softness)
+    return tight_crop(result, padding=0)
+
+
+def handle_transparentor(asset: dict, out_path: Path,
+                          src: Image.Image = None, src_w: int = 0, src_h: int = 0):
     """
-    Transparentor: auto-generate visual asset via OpenRouter → remove contrast bg → clean PNG.
+    Transparentor — extract key visual using image-to-image AI editing.
 
-    Flow:
-    1. Build prompt instructing AI to render asset on solid contrast bg
-    2. Call OpenRouter image gen API
-    3. Pipe result through removebg_known_color()
-    4. Auto-trim → save as <name>.png
+    Flow (preferred):
+      1. Crop the key visual region from the source banner
+      2. Send crop to Gemini (multimodal) via OpenRouter
+      3. Gemini outputs the subject isolated on a solid contrast background
+      4. Auto-detect actual bg color from corners
+      5. removebg_known_color → tight_crop → save clean transparent PNG
 
-    Falls back to writing prompt file only if OPENROUTER_API_KEY not set and not in asset.
+    Fallback (no image output from model):
+      → Pollinations FLUX text-to-image using the prompt field
+
+    Falls back to writing prompt file only if no api_key.
     """
     import io
 
@@ -364,30 +435,28 @@ def handle_transparentor(asset: dict, out_path: Path):
     contrast_bg = asset.get('contrast_bg', '#FF00FF')
     tolerance = asset.get('tolerance', 40)
     softness = asset.get('softness', 1.2)
-    model = asset.get('model', 'openai/dall-e-3')
-
+    model = asset.get('model', 'google/gemini-2.5-flash-image')
     api_key = asset.get('api_key') or os.environ.get('OPENROUTER_API_KEY', '')
 
-    # Always save prompt file for reference
+    # Always save prompt file for reference / manual fallback
     prompt_path = out_path.with_name(out_path.stem + '_prompt.txt')
-    transparentor_settings = asset.get('transparentor_settings',
-                                        f'Color Key → {contrast_bg} — threshold {tolerance}, softness {softness}')
+    transparentor_settings = asset.get(
+        'transparentor_settings',
+        f'Color Key → {contrast_bg} — threshold {tolerance}, softness {softness}')
     notes = asset.get('notes', '')
-    file_content = f"""ASSET: {asset.get('name', out_path.stem)}
-CONTRAST BACKGROUND: {contrast_bg}
-TRANSPARENTOR SETTINGS: {transparentor_settings}
-
-== PASTE THIS PROMPT INTO TRANSPARENTOR ==
-
-{prompt}
-
-== STEPS ==
-1. Open https://uranus-agency.github.io/Transparentor/
-2. Paste the prompt above
-3. After generation: Color Key → color {contrast_bg} → threshold 35, softness 1.0
-4. Download PNG → save as: {out_path.name}
-5. Copy to this folder: {out_path.parent}/
-"""
+    file_content = (
+        f"ASSET: {asset.get('name', out_path.stem)}\n"
+        f"CONTRAST BACKGROUND: {contrast_bg}\n"
+        f"TRANSPARENTOR SETTINGS: {transparentor_settings}\n\n"
+        f"== PASTE THIS PROMPT INTO TRANSPARENTOR ==\n\n{prompt}\n\n"
+        f"== STEPS ==\n"
+        f"1. Open https://uranus-agency.github.io/Transparentor/\n"
+        f"2. Upload source banner as reference image\n"
+        f"3. Paste the prompt above\n"
+        f"4. After generation: Color Key → color {contrast_bg} → threshold 35, softness 1.0\n"
+        f"5. Download PNG → save as: {out_path.name}\n"
+        f"6. Copy to this folder: {out_path.parent}/\n"
+    )
     if notes:
         file_content += f"\n== NOTES ==\n{notes}\n"
     with open(prompt_path, 'w', encoding='utf-8') as f:
@@ -395,51 +464,54 @@ TRANSPARENTOR SETTINGS: {transparentor_settings}
 
     if not api_key:
         print(f"  ✓ transparentor  {prompt_path.name}  (no API key — manual step needed)")
-        print(f"    contrast_bg: {contrast_bg}  |  {transparentor_settings}")
         return
 
-    # Auto-generate via OpenRouter
-    full_prompt = (
-        f"{prompt}\n\n"
-        f"IMPORTANT: Render the subject on a perfectly solid flat {contrast_bg} background only. "
-        f"No shadows, no ground plane, no gradients, no other colors. "
-        f"The background must be exactly {contrast_bg} so it can be keyed out."
-    )
+    # ── Crop source region to use as reference image ──────────────────────────
+    source_crop = None
+    if src is not None and 'bbox' in asset:
+        x1, y1, x2, y2 = resolve_bbox(asset['bbox'], src_w, src_h)
+        source_crop = src.crop((x1, y1, x2, y2))
+        print(f"  [transparentor] sending source crop {source_crop.size} to {model} ...")
+    elif src is not None:
+        source_crop = src
+        print(f"  [transparentor] sending full source {src.size} to {model} ...")
 
-    print(f"  [transparentor] generating image (model={model or 'pollinations/flux'}) ...")
-    try:
-        img_bytes = generate_image(full_prompt, api_key, model)
-    except Exception as e:
-        print(f"  ✗ image gen failed: {e}")
-        print(f"    prompt saved to {prompt_path.name} — manual step needed")
-        return
+    img_bytes = None
 
-    # Decode → removebg → trim → save
-    gen_img = Image.open(io.BytesIO(img_bytes)).convert('RGB')
-    arr = np.array(gen_img)
+    # ── Step 1: Gemini image-to-image editing ─────────────────────────────────
+    if source_crop is not None:
+        try:
+            img_bytes = gemini_edit_image(source_crop, prompt, api_key, contrast_bg, model)
+            if img_bytes:
+                print(f"    ✓ got image from {model}")
+            else:
+                print(f"    model returned text only — falling back to Pollinations")
+        except Exception as e:
+            print(f"    [{model}] {e} — falling back to Pollinations")
 
-    # Auto-detect actual bg color from corners (handles JPEG color drift)
-    h, w = arr.shape[:2]
-    corner_size = max(5, min(20, h // 20, w // 20))
-    corners = np.concatenate([
-        arr[:corner_size, :corner_size].reshape(-1, 3),
-        arr[:corner_size, -corner_size:].reshape(-1, 3),
-        arr[-corner_size:, :corner_size].reshape(-1, 3),
-        arr[-corner_size:, -corner_size:].reshape(-1, 3),
-    ])
-    actual_bg_rgb = corners.mean(axis=0).astype(np.uint8)
-    print(f"    detected bg: rgb{tuple(actual_bg_rgb)}  (specified: {contrast_bg})")
+    # ── Step 2: Fallback — Pollinations text-to-image ─────────────────────────
+    if not img_bytes:
+        flux_prompt = (
+            f"{prompt} "
+            f"Solid flat {contrast_bg} background only. No shadows, no ground plane. "
+            f"Clean product render, centered."
+        )
+        print(f"    [fallback] Pollinations FLUX ...")
+        try:
+            img_bytes = _generate_via_pollinations(flux_prompt)
+        except Exception as e:
+            print(f"  ✗ all image gen failed: {e}")
+            print(f"    prompt saved to {prompt_path.name} — manual step needed")
+            return
 
-    result = removebg_known_color(arr, actual_bg_rgb, tolerance=tolerance, softness=softness)
-    result = tight_crop(result, padding=0)
+    # ── Remove bg → trim → save ───────────────────────────────────────────────
+    result = _removebg_from_bytes(img_bytes, contrast_bg, tolerance, softness)
     result.save(out_path)
-    print(f"  ✓ transparentor  {out_path.name}  {result.size}  (auto-generated + bg removed)")
+    print(f"  ✓ transparentor  {out_path.name}  {result.size}  (bg removed)")
 
-    # Also save raw generated image for reference
     raw_path = out_path.with_name(out_path.stem + '_raw_generated.png')
-    gen_img_pil = Image.open(io.BytesIO(img_bytes))
-    gen_img_pil.save(raw_path)
-    print(f"    raw saved → {raw_path.name}")
+    Image.open(io.BytesIO(img_bytes)).save(raw_path)
+    print(f"    raw → {raw_path.name}")
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
@@ -489,7 +561,7 @@ def run(manifest_path: str):
         elif method == 'text_render':
             handle_text_render(asset, out_path)
         elif method == 'transparentor':
-            handle_transparentor(asset, out_path)
+            handle_transparentor(asset, out_path, src=src, src_w=src_w, src_h=src_h)
         else:
             print(f"  ✗ unknown method: {method}")
 
