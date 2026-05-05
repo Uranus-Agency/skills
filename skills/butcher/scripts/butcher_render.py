@@ -544,7 +544,7 @@ def render_assets(manifest_path: str, output_dir: str):
             html = generate_html_for_asset(asset, fonts_css)
 
             # Write temp HTML
-            temp_html_path = os.path.join(output_dir, f"_temp_{name}.html")
+            temp_html_path = os.path.abspath(os.path.join(output_dir, f"_temp_{name}.html"))
             with open(temp_html_path, 'w', encoding='utf-8') as f:
                 f.write(html)
 
