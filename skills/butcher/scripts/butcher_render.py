@@ -326,7 +326,10 @@ def render_text(asset: dict):
         text-shadow: {text_shadow};
     }}
     """
-    html = f'<div class="text-el">{text}</div>'
+    # Support raw HTML for mixed-color or styled text
+    raw_html = props.get("html", "")
+    content = raw_html if raw_html else text
+    html = f'<div class="text-el">{content}</div>'
     return html, css
 
 
