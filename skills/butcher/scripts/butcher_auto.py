@@ -438,32 +438,8 @@ def handle_transparentor(asset: dict, out_path: Path,
     model = asset.get('model', 'google/gemini-2.5-flash-image')
     api_key = asset.get('api_key') or os.environ.get('OPENROUTER_API_KEY', '')
 
-    # Always save prompt file for reference / manual fallback
-    prompt_path = out_path.with_name(out_path.stem + '_prompt.txt')
-    transparentor_settings = asset.get(
-        'transparentor_settings',
-        f'Color Key → {contrast_bg} — threshold {tolerance}, softness {softness}')
-    notes = asset.get('notes', '')
-    file_content = (
-        f"ASSET: {asset.get('name', out_path.stem)}\n"
-        f"CONTRAST BACKGROUND: {contrast_bg}\n"
-        f"TRANSPARENTOR SETTINGS: {transparentor_settings}\n\n"
-        f"== PASTE THIS PROMPT INTO TRANSPARENTOR ==\n\n{prompt}\n\n"
-        f"== STEPS ==\n"
-        f"1. Open https://uranus-agency.github.io/Transparentor/\n"
-        f"2. Upload source banner as reference image\n"
-        f"3. Paste the prompt above\n"
-        f"4. After generation: Color Key → color {contrast_bg} → threshold 35, softness 1.0\n"
-        f"5. Download PNG → save as: {out_path.name}\n"
-        f"6. Copy to this folder: {out_path.parent}/\n"
-    )
-    if notes:
-        file_content += f"\n== NOTES ==\n{notes}\n"
-    with open(prompt_path, 'w', encoding='utf-8') as f:
-        f.write(file_content)
-
     if not api_key:
-        print(f"  ✓ transparentor  {prompt_path.name}  (no API key — manual step needed)")
+        print(f"  ✗ transparentor  {out_path.name}  (no OPENROUTER_API_KEY — skipping)")
         return
 
     # ── Crop source region to use as reference image ──────────────────────────
@@ -508,10 +484,6 @@ def handle_transparentor(asset: dict, out_path: Path,
     result = _removebg_from_bytes(img_bytes, contrast_bg, tolerance, softness)
     result.save(out_path)
     print(f"  ✓ transparentor  {out_path.name}  {result.size}  (bg removed)")
-
-    raw_path = out_path.with_name(out_path.stem + '_raw_generated.png')
-    Image.open(io.BytesIO(img_bytes)).save(raw_path)
-    print(f"    raw → {raw_path.name}")
 
 
 # ── main ──────────────────────────────────────────────────────────────────────
