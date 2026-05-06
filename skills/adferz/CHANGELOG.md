@@ -1,5 +1,52 @@
 # adferz CHANGELOG
 
+## 1.3.0 — 2026-05-01
+
+### Core problem solved
+Claude can't see what it builds. Every rule in this version closes a specific gap where that
+blindness causes a bad first-output: wrong colors (no Asset Profile), invisible text (Collision
+Check), generic treatment (Treatment Decision Filter), missed format rules (format reference files).
+
+### Added
+- **Asset Profile** (STEP 1 output): Mandatory structured table — every asset's role, approx
+  dimensions, dominant colors, and transparency flag. Colors extracted here are the ONLY source
+  for CSS palette. Closes the gap between asset analysis and style.css.
+- **Treatment Decision Filter** (STEP 1.5 — Treatment Selection): 3 mandatory questions before
+  naming any treatment: (Q1) What motion is hiding in the assets? (Q2) What register does the
+  brand need? (table: luxury/urgency/playful/authority → treatment examples) (Q3) What did the
+  last build use? Forces asset-native motion over habit; prevents register mismatch.
+- **Format reference files** (`references/formats/`): Format-specific rules moved out of the
+  main SKILL.md into four dedicated files loaded on demand. Each file contains: CSS reset,
+  tags.js template, layout patterns, animation budget, element sizing reference, and
+  format-specific constraints. Main SKILL.md now instructs: "read references/formats/[slug].md
+  before STEP 1" — format rules are consulted at the right time, not buried at line 360.
+
+### Changed
+- **STEP 1.5 auto-proceed rule clarified**: "Even in auto-proceed mode ('بزن', 'بساز',
+  'build it'), write and show the full blueprint in your response. Never skip or internalize it
+  silently. A blueprint that isn't shown isn't a blueprint." — prevents the model from doing
+  spatial simulation mentally without outputting it.
+- **Element Space Budget** now explicitly requires: "Bbox values come from the Asset Profile
+  dimensions above — not from guesses." Links STEP 1 and STEP 1.5 into a coherent pipeline.
+- **SKILL.md trimmed** from 562 lines to ~390 lines. Format-specific content moved to
+  references/formats/. Core pipeline is now faster to load and easier to scan.
+
+### Structure
+```
+adferz/
+├── SKILL.md                    (~390 lines — was 562)
+├── CHANGELOG.md
+└── references/
+    ├── learnings/              (existing — anti-bias audit trail)
+    └── formats/                (NEW)
+        ├── bb-150.md
+        ├── bb-468.md
+        ├── mid-300x100.md
+        └── rect-300x250.md
+```
+
+---
+
 ## 1.2.0 — 2026-05-01
 
 ### Added
